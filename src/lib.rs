@@ -1,14 +1,35 @@
 use pyo3::prelude::*;
+mod bitmatrix;
+mod bitvec;
+use bitmatrix::{Bitmatrix, BronKerbosh, Networkx};
+use std::time::Instant;
 
-/// Formats the sum of two numbers as string.
 #[pyfunction]
-fn sum_as_string(a: usize, b: usize) -> PyResult<String> {
-    Ok((a + b).to_string())
+fn find_cliques(adjacency_matrix: Vec<Vec<usize>>) -> PyResult<(f64, u32)> {
+    let n_nodes = adjacency_matrix.len();
+    let graph = Bitmatrix::new(adjacency_matrix, n_nodes);
+    let mut count = 0;
+    let start_time = Instant::now();
+    for _ in graph.bron_kerbosh_pivot() {
+        count += 1
+    }
+    let elapsed = start_time.elapsed();
+    Ok((elapsed.as_secs() as f64, count))
 }
 
+#[pyfunction]
+fn find_better_cliques(adjacency_matrix: Vec<Vec<usize>>) -> PyResult<(f64, usize)> {
+    let n_nodes = adjacency_matrix.len();
+    let graph = Bitmatrix::new(adjacency_matrix, n_nodes);
+    let start_time = Instant::now();
+    let count = graph.tomita();
+    let elapsed = start_time.elapsed();
+    Ok((elapsed.as_secs() as f64, count))
+}
 /// A Python module implemented in Rust.
 #[pymodule]
 fn heron(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(sum_as_string, m)?)?;
+    m.add_function(wrap_pyfunction!(find_cliques, m)?)?;
+    m.add_function(wrap_pyfunction!(find_better_cliques, m)?)?;
     Ok(())
 }
