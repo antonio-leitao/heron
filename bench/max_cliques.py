@@ -21,20 +21,16 @@ def heron_cliques(A):
     return he.find_cliques(adjacency_matrix)
 
 
-def heron_better_cliques(A):
-    adjacency_matrix = [np.nonzero(row)[0].tolist() for row in A]
-    return he.find_better_cliques(adjacency_matrix)
-
 
 def main():
     # CREATING THE RANDOM MATRIX
-    n = 500
+    n = 1500
     matrix = np.random.uniform(0, 1, size=(n, n))
     matrix = (matrix + matrix.T) / 2
     np.fill_diagonal(matrix, 0)
 
     # TRESHOLDING
-    threshold = 0.4
+    threshold = 0.25
     A = np.zeros_like(matrix)
     A[matrix < threshold] = 1
     np.fill_diagonal(A, 0)

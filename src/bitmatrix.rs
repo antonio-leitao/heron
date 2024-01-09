@@ -1,5 +1,4 @@
 use crate::bitvec::Bitvec;
-use std::collections::{vec_deque, VecDeque};
 
 #[derive(Clone)]
 pub struct Bitmatrix {
@@ -19,85 +18,27 @@ impl Bitmatrix {
     pub fn get_neighbours(&self, u: usize) -> Vec<usize> {
         self.matrix[u].elements()
     }
-}
-
-pub struct BronKerboshGenerator<'a> {
-    stack: VecDeque<(Bitvec, Bitvec, Bitvec)>,
-    matrix: &'a Bitmatrix,
-}
-
-pub trait BronKerbosh {
-    // Define the methods or associated types here
-    fn choose_pivot_vertex(&self, pux: &Bitvec) -> usize;
-    fn bron_kerbosh_pivot(&self) -> BronKerboshGenerator;
-}
-
-impl BronKerbosh for Bitmatrix {
-    fn choose_pivot_vertex(&self, pux: &Bitvec) -> usize {
-        let mut max_degree: u32 = 0;
-        let mut pivot: usize = 0;
-        for vertex in pux.elements().into_iter() {
-            let degree = self.matrix[vertex].n_elements() as u32;
-            if degree + 1 > max_degree {
-                max_degree = degree + 1;
-                pivot = vertex;
-            };
+    pub fn transpose(&mut self) {
+        let mut new_matrix: Vec<Bitvec> = Vec::with_capacity(self.capacity);
+        for _ in 0..self.capacity {
+            new_matrix.push(Bitvec::new(self.matrix.len()));
         }
-        pivot
-    }
-    fn bron_kerbosh_pivot(&self) -> BronKerboshGenerator {
-        BronKerboshGenerator::new(self)
-    }
-}
-
-impl<'a> BronKerboshGenerator<'a> {
-    fn new(matrix: &'a Bitmatrix) -> Self {
-        let indices = (0..matrix.capacity).collect::<Vec<_>>();
-        let p = Bitvec::from_vector(&indices, matrix.capacity);
-        let mut stack: VecDeque<(Bitvec, Bitvec, Bitvec)> = VecDeque::new();
-        stack.push_front((
-            Bitvec::new(matrix.capacity),
-            p.clone(),
-            Bitvec::new(matrix.capacity),
-        ));
-        BronKerboshGenerator { stack, matrix }
-    }
-}
-
-impl<'a> Iterator for BronKerboshGenerator<'a> {
-    type Item = Vec<usize>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        while let Some((r, p, x)) = self.stack.pop_front() {
-            if p.is_empty() && x.is_empty() {
-                return Some(r.elements());
-            } else {
-                let q = self.matrix.choose_pivot_vertex(&p.union(&x));
-                let q_neighbors = self.matrix.matrix[q].clone();
-                if let Some(v) = p.difference(&q_neighbors).first_index() {
-                    self.stack
-                        .push_front((r.clone(), p.removal(v), x.insertion(v)));
-                    let v_neighbours = self.matrix.matrix[v].clone();
-                    self.stack.push_front((
-                        r.insertion(v),
-                        p.intersection(&v_neighbours),
-                        x.intersection(&v_neighbours),
-                    ));
-                }
+        for (i, row) in self.matrix.iter().enumerate() {
+            for column in row.elements() {
+                new_matrix[column].insert(i);
             }
         }
-        None
+        self.matrix = new_matrix;
     }
 }
-
 // NEW VERSION
-pub trait Networkx {
+pub trait FindCliques {
     // Define the methods or associated types here
     fn get_max_degree(&self, pool: &Bitvec) -> Option<usize>;
-    fn tomita(&self) -> usize;
+    fn find_cliques(&self) -> Vec<Vec<Option<usize>>>;
 }
 
-impl Networkx for Bitmatrix {
+impl FindCliques for Bitmatrix {
     fn get_max_degree(&self, pool: &Bitvec) -> Option<usize> {
         pool.elements()
             .iter()
@@ -105,7 +46,8 @@ impl Networkx for Bitmatrix {
             .cloned()
     }
 
-    fn tomita(&self) -> usize {
+    fn find_cliques(&self) -> Vec<Vec<Option<usize>>> {
+        let mut cliques: Vec<Vec<Option<usize>>>;
         let mut count = 0;
         let mut Q: Vec<Option<usize>> = Vec::new();
         Q.push(None);
@@ -117,7 +59,7 @@ impl Networkx for Bitmatrix {
         let mut stack = Vec::new();
         let mut u = match self.get_max_degree(&cand) {
             Some(elem) => elem,
-            None => return count,
+            None => return cliques,
         };
         let mut ext_u = cand.difference(&self.matrix[u]);
         while !Q.is_empty() | !stack.is_empty() | !ext_u.is_empty() {
@@ -131,7 +73,7 @@ impl Networkx for Bitmatrix {
                     let adj_q = &self.matrix[q];
                     let subg_q = subg.intersection(adj_q);
                     if subg_q.is_empty() {
-                        count += 1;
+                        cliques.push(Q.clone());
                     } else {
                         let cand_q = cand.intersection(adj_q);
                         if !cand_q.is_empty() {
@@ -161,39 +103,46 @@ impl Networkx for Bitmatrix {
                 }
             }
         }
-        count
+        cliques
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub trait NextCliques {
+    fn next_cliques(&self, cliques: &[Bitvec]);
+}
 
-    #[test]
-    fn test_bron_kerbosch_pivot() {
-        let adjacency_matrix: Vec<Vec<usize>> = vec![
-            vec![1, 4],
-            vec![0, 2, 4],
-            vec![1, 3],
-            vec![2, 4, 5],
-            vec![0, 1, 3],
-            vec![3],
-        ];
-        let n_nodes = adjacency_matrix.len();
-        let graph = Bitmatrix::new(adjacency_matrix, n_nodes);
-        for maximal_clique in graph.bron_kerbosh_pivot() {
-            println!("Maximal Clique: {:?}", maximal_clique);
+impl NextCliques for Bitmatrix {
+    fn next_cliques(&self, cliques: &[Bitvec]) {
+        let degrees: Vec<usize> = self.matrix.iter().map(|row| row.n_elements()).collect();
+        for clique in cliques.iter() {
+            let clique_size = clique.n_elements();
+            let vertii = clique.elements();
+            //get common neighbours of cliques
+            let mut common_neighbours: Bitvec;
+            match vertii.first() {
+                Some(first) => {
+                    common_neighbours = self.matrix[*first].clone();
+                    for vertex in vertii.iter().skip(1) {
+                        common_neighbours.intersection_with(&self.matrix[*vertex]);
+                    }
+                }
+                None => continue,
+            }
+            match vertii.last() {
+                Some(vertex) => {
+                    for neighbour in common_neighbours.elements_from(*vertex).into_iter() {
+                        if degrees[neighbour] < clique_size + 1 {
+                            continue;
+                        }
+
+                        if self.matrix[neighbour].contains_all(&vertii) {
+                            println!("{:?}+{}", vertii, neighbour);
+                        }
+                    }
+                }
+                None => continue,
+            }
         }
-        let result: Vec<Vec<usize>> = graph.bron_kerbosh_pivot().collect();
-        assert_eq!(
-            result,
-            vec![
-                vec![1, 2],
-                vec![0, 1, 4],
-                vec![2, 3],
-                vec![3, 4],
-                vec![3, 5]
-            ]
-        )
     }
 }
+

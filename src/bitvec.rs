@@ -84,6 +84,16 @@ impl Bitvec {
         }
     }
 
+    pub fn contains_all(&self, elements: &[usize]) -> bool {
+        //more efficient, stops at first encounter
+        for index in elements.iter() {
+            if !self.contains(*index) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     pub fn intersection(&self, other: &Bitvec) -> Bitvec {
         // Ensure both Nimbus instances have the same length
         assert_eq!(self.len(), other.len(), "Vectors must have the same length");
@@ -123,7 +133,7 @@ impl Bitvec {
         result
     }
 
-    fn intersection_with(&mut self, other: &Bitvec) {
+    pub fn intersection_with(&mut self, other: &Bitvec) {
         // Ensure both Nimbus instances have the same length
         assert_eq!(
             self.0.len(),
@@ -160,6 +170,27 @@ impl Bitvec {
 
         positions
     }
+
+    pub fn elements_from(&self, start_index: usize) -> Vec<usize> {
+        let mut positions = Vec::new();
+        let mut offset = start_index / 8;
+
+        for byte in self.iter().skip(start_index / 8) {
+            let byte_positions = find_set_bits_positions_in_byte(*byte);
+
+            positions.extend(
+                byte_positions
+                    .iter()
+                    .map(|pos| pos + offset)
+                    .filter(|&pos| pos > start_index),
+            );
+
+            offset += 8; // Move the offset to the next byte position
+        }
+
+        positions
+    }
+
     pub fn first_index(&self) -> Option<usize> {
         for (byte_index, &byte) in self.iter().enumerate() {
             if byte != 0 {
@@ -244,6 +275,7 @@ mod tests {
         assert!(bitvec.contains(5)); // Bit at index 5 should be contained after insert
         assert!(!bitvec.contains(7)); // Bit at index 7 was not inserted and should not be contained
         assert!(bitvec.contains(10)); // Bit at index 10 should be contained after insert
+        assert!(bitvec.contains_all(&[5, 10]))
     }
     #[test]
     fn test_union_and_intersection() {
@@ -313,5 +345,10 @@ mod tests {
     fn test_first_element() {
         let bitvec = Bitvec::from_vector(&vec![5, 4, 12, 6], 16);
         assert_eq!(bitvec.first_index(), Some(4));
+    }
+    #[test]
+    fn test_elements_from() {
+        let bitvec = Bitvec::from_vector(&vec![5, 4, 12, 6], 16);
+        assert_eq!(bitvec.elements_from(5), vec![6, 12]);
     }
 }
