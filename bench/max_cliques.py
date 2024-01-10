@@ -21,7 +21,6 @@ def heron_cliques(A):
     return he.find_cliques(adjacency_matrix)
 
 
-
 def main():
     # CREATING THE RANDOM MATRIX
     n = 1500
@@ -30,7 +29,7 @@ def main():
     np.fill_diagonal(matrix, 0)
 
     # TRESHOLDING
-    threshold = 0.25
+    threshold = 0.35
     A = np.zeros_like(matrix)
     A[matrix < threshold] = 1
     np.fill_diagonal(A, 0)
@@ -40,9 +39,6 @@ def main():
     print(f"elapsed: {elapsed}, count: {count}")
     elapsed, count = heron_cliques(A)
     print("HERON")
-    print(f"elapsed: {elapsed}, count: {count}")
-    elapsed, count = heron_better_cliques(A)
-    print("TOMITA")
     print(f"elapsed: {elapsed}, count: {count}")
 
 
