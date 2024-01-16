@@ -3,7 +3,7 @@ use hashbrown::HashMap;
 
 #[derive(Clone)]
 pub struct Bitmatrix {
-    matrix: Vec<Bitvec>,
+    pub matrix: Vec<Bitvec>,
     capacity: usize,
 }
 

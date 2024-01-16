@@ -23,7 +23,7 @@ impl Bitvec {
         self.0.iter()
     }
 
-    fn iter_mut(&mut self) -> IterMut<'_, u8> {
+    pub fn iter_mut(&mut self) -> IterMut<'_, u8> {
         self.0.iter_mut()
     }
 
@@ -71,7 +71,7 @@ impl Bitvec {
         away
     }
 
-    fn contains(&self, index: usize) -> bool {
+    pub fn contains(&self, index: usize) -> bool {
         let byte_position = index / 8;
         let bit_position = index % 8;
 
@@ -145,7 +145,7 @@ impl Bitvec {
             *byte_self &= byte_other;
         }
     }
-    fn union_with(&mut self, other: &Bitvec) {
+    pub fn union_with(&mut self, other: &Bitvec) {
         // Ensure both Nimbus instances have the same length
         assert_eq!(
             self.0.len(),

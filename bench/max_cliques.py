@@ -21,9 +21,14 @@ def heron_cliques(A):
     return he.find_cliques(adjacency_matrix)
 
 
+def heron_gradual_cliques(A):
+    adjacency_matrix = [np.nonzero(row)[0].tolist() for row in A]
+    return he.cliques_up_to(adjacency_matrix)
+
+
 def main():
     # CREATING THE RANDOM MATRIX
-    n = 1500
+    n = 1000
     matrix = np.random.uniform(0, 1, size=(n, n))
     matrix = (matrix + matrix.T) / 2
     np.fill_diagonal(matrix, 0)
@@ -39,6 +44,10 @@ def main():
     print(f"elapsed: {elapsed}, count: {count}")
     elapsed, count = heron_cliques(A)
     print("HERON")
+    print(f"elapsed: {elapsed}, count: {count}")
+
+    elapsed, count = heron_gradual_cliques(A)
+    print("HERON (gradual)")
     print(f"elapsed: {elapsed}, count: {count}")
 
 
